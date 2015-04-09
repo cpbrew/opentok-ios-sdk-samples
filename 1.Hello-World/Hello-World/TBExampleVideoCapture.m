@@ -60,11 +60,9 @@ extern UITextField *my_pub_dimensions ;
     self = [super init];
     if (self) {
 
-        NSString *yuvFileName = @"1280_720_HIGH.yuv";
-        // 352_288_HIGH.yuv 640_480_HIGH.yuv 1280_720_HIGH.yuv
         _captureWidth = 0;
         _captureHeight = 0;
-        [self setCaptureDimesionsFromFileName:yuvFileName
+        [self setCaptureDimesionsFromFileName:YUV_FILE_NAME
                                         width:&_captureWidth
                                        height:&_captureHeight];
         
@@ -77,8 +75,8 @@ extern UITextField *my_pub_dimensions ;
                                                         height:_captureHeight]];
         
         NSString *yuvFilePath = [[NSBundle mainBundle]
-                                 pathForResource:[yuvFileName stringByDeletingPathExtension]
-                                 ofType:[yuvFileName pathExtension]];
+                                 pathForResource:[YUV_FILE_NAME stringByDeletingPathExtension]
+                                 ofType:[YUV_FILE_NAME pathExtension]];
         
         pFile = fopen ( [yuvFilePath cStringUsingEncoding:NSUTF8StringEncoding] , "rb" );
         //frame_size = (_captureWidth * _captureHeight) + (_captureWidth / 2 * _captureHeight);

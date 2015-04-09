@@ -12,11 +12,6 @@
 #include <sys/sysctl.h>
 #include <signal.h>
 #import <VideoToolbox/VideoToolbox.h>
-static void int3_handler(int signo)
-{
-    int a = 0;
-    int b = 0;
-}
 extern void set_h264_as_default_codec(bool value);
 UITextField *my_pub_dimensions = nil;
 UITextField *my_sub_dimensions = nil;
@@ -25,6 +20,7 @@ UIView *globalRootView;
 
 #import "TBExampleSubscriber.h"
 #import "TBExamplePublisher.h"
+#import "TBExampleVideoCapture.h"
 
 bool startSending = false;
 
@@ -66,10 +62,15 @@ static NSString* const kApiKey = @"100";
 //// Replace with your generated token
 //static NSString* const kToken = @"T1==cGFydG5lcl9pZD0xMDAmc2RrX3ZlcnNpb249dGJwaHAtdjAuOTEuMjAxMS0wNy0wNSZzaWc9ZjI1YTBiNzI4YjQ1YzMzYzdlNWJiYTliYzIzODU4Y2U1MTNiYWQ4YTpzZXNzaW9uX2lkPTFfTVg0eE1EQi1NVEkzTGpBdU1DNHhmbE5oZENCQmRXY2dNRGtnTURZNk1USTZNamdnVUVSVUlESXdNVFItTUM0NU5qVXpNemd5Zm40JmNyZWF0ZV90aW1lPTE0MDc1OTAyNTUmcm9sZT1tb2RlcmF0b3Imbm9uY2U9MTQwNzU5MDI1NS4yMTQ5NzgzMjg0NTc3JmV4cGlyZV90aW1lPTE0MTAxODIyNTUmY29ubmVjdGlvbl9kYXRhPVQxJTNEJTNEY0dGeWRHNWxjbDlwWkQweE1EQW1jMlJyWDNabGNuTnBiMjQ5ZEdKd2FIQXRkakF1T1RFdU1qQXhNUzB3Tnkwd05TWnphV2M5T1RSaU56a3dZMk5oTkRFMVpXRm1OalpqTVRVNE0ySTVPR0kzTXpBeVkyUXdaR0V4TkRVME5qcHpaWE56YVc5dVgybGtQVEZmVFZnMGVFMUVRaTFOVkVrelRHcEJkVTFETkhobWJGSnZaRk5DVGxsWVNXZE5SRmxuVFdwSk5rMUVaelpPUkUxblZVWk9WVWxFU1hkTlZGSXRUVU0wTVUxcVFUTk9WRlY2VGxnMEptTnlaV0YwWlY5MGFXMWxQVEV6T1RRME1qTTFNekFtY205c1pUMXRiMlJsY21GMGIzSW1ibTl1WTJVOU1UTTVORFF5TXpVek1DNDRPRFV5TWpVNU16TTBORFF4Sm1WNGNHbHlaVjkwYVcxbFBURXpPVGN3TVRVMU16QSUzRA==";
 
+////P2P session
+//static NSString* const kSessionId = @"1_MX4xMDB-fjE0Mjg1MzUyNTUzMjZ-UFBLdjhpdkZxMGZRT2xZVTdpc2JWdlJZflB-";
+//// Replace with your generated token
+//static NSString* const kToken = @"T1==cGFydG5lcl9pZD0xMDAmc2RrX3ZlcnNpb249dGJwaHAtdjAuOTEuMjAxMS0wNy0wNSZzaWc9MWJhNGUzNjA4ZTk5YzgzZGJiZWI2NmI4M2Y1OGRlOGEzNzMyZDAxOTpzZXNzaW9uX2lkPTFfTVg0eE1EQi1makUwTWpnMU16VXlOVFV6TWpaLVVGQkxkamhwZGtaeE1HWlJUMnhaVlRkcGMySldkbEpaZmxCLSZjcmVhdGVfdGltZT0xNDI4NTM0NjM2JnJvbGU9bW9kZXJhdG9yJm5vbmNlPTE0Mjg1MzQ2MzYuODgwOTQyMTkwNjgyMSZleHBpcmVfdGltZT0xNDMxMTI2NjM2";
+
 // P2P session
 static NSString* const kSessionId = @"2_MX4xMDB-MTI3LjAuMC4xfjE0MjQyODQxNTI0Nzd-VWRWUzEydG9NZmhBaEMzWExpc2JHUklPflB-";
 // Replace with your generated token
-static NSString* const kToken = @"T1==cGFydG5lcl9pZD0xMDAmc2RrX3ZlcnNpb249dGJwaHAtdjAuOTEuMjAxMS0wNy0wNSZzaWc9MzE5OTE3ODVlMWRhN2ZmZjZlMGNlMGJlNzM0YzlhMDViNGUwZDhiZjpzZXNzaW9uX2lkPTJfTVg0eE1EQi1NVEkzTGpBdU1DNHhmakUwTWpReU9EUXhOVEkwTnpkLVZXUldVekV5ZEc5TlptaEJhRU16V0V4cGMySkhVa2xQZmxCLSZjcmVhdGVfdGltZT0xNDI0MjgzNjk0JnJvbGU9bW9kZXJhdG9yJm5vbmNlPTE0MjQyODM2OTQuMTQ0MTE1OTAwMDc4MjUmZXhwaXJlX3RpbWU9MTQyNjg3NTY5NCZjb25uZWN0aW9uX2RhdGE9VDElM0QlM0RjR0Z5ZEc1bGNsOXBaRDB4TURBbWMyUnJYM1psY25OcGIyNDlkR0p3YUhBdGRqQXVPVEV1TWpBeE1TMHdOeTB3TlNaemFXYzlPVFJpTnprd1kyTmhOREUxWldGbU5qWmpNVFU0TTJJNU9HSTNNekF5WTJRd1pHRXhORFUwTmpwelpYTnphVzl1WDJsa1BURmZUVmcwZUUxRVFpMU5WRWt6VEdwQmRVMUROSGhtYkZKdlpGTkNUbGxZU1dkTlJGbG5UV3BKTmsxRVp6Wk9SRTFuVlVaT1ZVbEVTWGROVkZJdFRVTTBNVTFxUVROT1ZGVjZUbGcwSm1OeVpXRjBaVjkwYVcxbFBURXpPVFEwTWpNMU16QW1jbTlzWlQxdGIyUmxjbUYwYjNJbWJtOXVZMlU5TVRNNU5EUXlNelV6TUM0NE9EVXlNalU1TXpNME5EUXhKbVY0Y0dseVpWOTBhVzFsUFRFek9UY3dNVFUxTXpBJTNE";
+static NSString* const kToken = @"T1==cGFydG5lcl9pZD0xMDAmc2RrX3ZlcnNpb249anRzYWkyLjAmc2lnPTg0ODk2Y2UxMDUyZjI4MzYxZWQ3M2NmYjgxNDM5YjBlYzAwOGU3YTM6c2Vzc2lvbl9pZD0yX01YNHhNREItTVRJM0xqQXVNQzR4ZmpFME1qUXlPRFF4TlRJME56ZC1WV1JXVXpFeWRHOU5abWhCYUVNeldFeHBjMkpIVWtsUGZsQi0mY3JlYXRlX3RpbWU9MTQyODUyODgwMCZyb2xlPW1vZGVyYXRvciZleHBpcmVfdGltZT0xNDMxMTIwODAwJm5vbmNlPTE0Mjg1Mjg4MDAuNzY3MTEzMTEzODQ3NzI=";
 
 
 // Change to NO to subscribe to streams other than your own.
@@ -102,8 +103,8 @@ NSMutableArray *allStreams = nil;
 
     //[OpenTokObjC enableH264Codec];
     
-    //    [NSClassFromString(@"OpenTokObjC") performSelector:@selector(setLogBlock:) withObject:logBlock];
-    //    [NSClassFromString(@"OpenTokObjC") performSelector:@selector(setLogBlockQueue:) withObject:dispatch_get_main_queue()];
+//        [NSClassFromString(@"OpenTokObjC") performSelector:@selector(setLogBlock:) withObject:logBlock];
+//        [NSClassFromString(@"OpenTokObjC") performSelector:@selector(setLogBlockQueue:) withObject:dispatch_get_main_queue()];
     
     // Step 1: As the view comes into the foreground, initialize a new instance
     // of OTSession and begin the connection process.
@@ -199,7 +200,8 @@ NSMutableArray *allStreams = nil;
     //return;
     _subscriber = [[TBExampleSubscriber alloc] initWithStream:stream
                                                      delegate:self];
-    _subscriber.fileNameToWriteRawData = @"640_480_HIGH_Decoded.yuv";
+//    _subscriber.fileNameToWriteRawData = @"640_480_HIGH_Decoded.yuv";
+    _subscriber.fileNameToWriteRawData = YUV_FILE_NAME_DECODED;
     
     [allSubs setObject:_subscriber forKey:stream.streamId];
     [allStreams addObject:stream.streamId];
@@ -250,6 +252,9 @@ NSMutableArray *allStreams = nil;
     
     [self updateBatteryLevel];
     NSLog(@"Final Avg. CPU Usage %.2f, Memory used %.2f",cpuVal,memVal);
+    
+    self.cpuUsageTxtFld.text = [NSString stringWithFormat:@"%.2f",cpuVal];
+    self.memUsageTxtFld.text = [NSString stringWithFormat:@"%.2f",memVal];
     
 }
 
@@ -314,9 +319,9 @@ didFailWithError:(OTError*)error
           subscriber.stream.connection.connectionId);
     
     
-    int index = [allStreams indexOfObject:subscriber.stream.streamId];
-    int count = floor(index/2.0) ;
-    _subscriber = subscriber;
+//    NSUInteger index = [allStreams indexOfObject:subscriber.stream.streamId];
+//    int count = floor(index/2.0) ;
+    _subscriber = (TBExampleSubscriber *)subscriber;
     //    [_subscriber.view setFrame:CGRectMake(((index % 2) == 0) ? 0 : widgetWidth,
     //                                          count * widgetHeight,
     //                                          widgetWidth,
@@ -484,8 +489,8 @@ float getMemoryUsage() {
         startSending = YES;
     float memVal = getMemoryUsage();
     float cpuVal = cpu_usage();
-    self.cpuUsageTxtFld.text = [NSString stringWithFormat:@"%.2f",cpuVal];
-    self.memUsageTxtFld.text = [NSString stringWithFormat:@"%.2f",memVal];
+//    self.cpuUsageTxtFld.text = [NSString stringWithFormat:@"%.2f",cpuVal];
+//    self.memUsageTxtFld.text = [NSString stringWithFormat:@"%.2f",memVal];
     _totalCounter++;
     _memTotal += memVal;
     _cpuTotal += cpuVal;
